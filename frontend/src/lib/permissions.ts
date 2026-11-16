@@ -1,0 +1,71 @@
+import type { PerfilUsuario } from "@/features/usuarios/usuarios.types";
+
+const ALL_PROFILES: readonly PerfilUsuario[] = [
+  "ADMIN",
+  "GESTOR",
+  "SUPERVISOR",
+  "TECNICO",
+  "CONSULTA",
+];
+
+export type AppPermission =
+  | "dashboardRead"
+  | "costsRead"
+  | "assistantUse"
+  | "reportsUse"
+  | "maintenanceRead"
+  | "auditRead"
+  | "companiesRead"
+  | "locationsRead"
+  | "usersRead"
+  | "profileRead"
+  | "assetsManage"
+  | "assetsDelete"
+  | "companiesManage"
+  | "locationsManage"
+  | "usersManage"
+  | "materialsManage"
+  | "workOrdersCreate"
+  | "workOrdersManage"
+  | "preventivePlansManage"
+  | "preventivePlansGenerate"
+  | "stopsManage"
+  | "alertsManage";
+
+export const APP_PERMISSIONS: Record<
+  AppPermission,
+  readonly PerfilUsuario[]
+> = {
+  dashboardRead: ALL_PROFILES,
+  costsRead: ["ADMIN", "GESTOR", "SUPERVISOR"],
+  assistantUse: ALL_PROFILES,
+  // O backend exige usuário vinculado a empresa; a tela trata o ADMIN global.
+  reportsUse: ALL_PROFILES,
+  maintenanceRead: ALL_PROFILES,
+  auditRead: ["ADMIN", "GESTOR"],
+  companiesRead: ALL_PROFILES,
+  locationsRead: ALL_PROFILES,
+  usersRead: ["ADMIN", "GESTOR", "SUPERVISOR"],
+  profileRead: ALL_PROFILES,
+  assetsManage: ["ADMIN", "SUPERVISOR"],
+  assetsDelete: ["ADMIN"],
+  companiesManage: ["ADMIN"],
+  locationsManage: ["ADMIN", "SUPERVISOR"],
+  usersManage: ["ADMIN"],
+  materialsManage: ["ADMIN", "SUPERVISOR"],
+  workOrdersCreate: ["ADMIN", "SUPERVISOR"],
+  workOrdersManage: ["ADMIN", "SUPERVISOR"],
+  preventivePlansManage: ["ADMIN", "GESTOR", "SUPERVISOR"],
+  preventivePlansGenerate: ["ADMIN", "GESTOR", "SUPERVISOR", "TECNICO"],
+  stopsManage: ["ADMIN", "SUPERVISOR"],
+  alertsManage: ["ADMIN", "GESTOR", "SUPERVISOR"],
+};
+
+export function hasPermission(
+  perfil: PerfilUsuario | null | undefined,
+  permission: AppPermission,
+): boolean {
+  if (!perfil) return false;
+
+  return APP_PERMISSIONS[permission].some((allowedProfile) => allowedProfile === perfil);
+}

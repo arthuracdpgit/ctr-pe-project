@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
 import { Pressable, ScrollView, View } from "react-native";
 
+import { PermissionRoute } from "@/components/domain/permission-gate";
 import { ChipsField } from "@/components/forms/chips-field";
 import { ControlledInput } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,22 @@ const PRIORIDADES: PrioridadeOS[] = ["BAIXA", "MEDIA", "ALTA", "CRITICA"];
 const TIPOS: TipoOS[] = ["CORRETIVA", "PREVENTIVA", "INSPECAO", "OUTRA"];
 
 export default function NovaOrdemServicoScreen() {
+  return (
+    <PermissionRoute permission="workOrdersCreate">
+      <NovaOrdemServicoContent />
+    </PermissionRoute>
+  );
+}
+
+function NovaOrdemServicoContent() {
   const router = useRouter();
-  const empresaId = useSelectedEmpresaId();
+  const params = useLocalSearchParams<{
+    ativoId?: string;
+    empresaId?: string;
+    tipo?: TipoOS;
+  }>();
+  const selectedEmpresaId = useSelectedEmpresaId();
+  const empresaId = params.empresaId ?? selectedEmpresaId;
   const createMutation = useCreateOrdemServico();
 
   const {
@@ -36,11 +51,11 @@ export default function NovaOrdemServicoScreen() {
     resolver: zodResolver(createOrdemServicoSchema),
     defaultValues: {
       empresaId: empresaId ?? "",
-      ativoId: "",
+      ativoId: params.ativoId ?? "",
       titulo: "",
       descricao: "",
       prioridade: "MEDIA",
-      tipo: "CORRETIVA",
+      tipo: params.tipo ?? "CORRETIVA",
     },
   });
 

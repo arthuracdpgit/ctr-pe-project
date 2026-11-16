@@ -1,4 +1,20 @@
 export const endpoints = {
+  ai: {
+    chat: "/ai/chat",
+    troubleshoot: "/ai/troubleshoot",
+    reports: {
+      root: "/ai/reports",
+      byId: (id: string) => `/ai/reports/${id}`,
+      download: (id: string) => `/ai/reports/${id}/download`,
+    },
+  },
+  planosManutencao: {
+    list: "/planos-manutencao",
+    create: "/planos-manutencao",
+    byId: (id: string) => `/planos-manutencao/${id}`,
+    gerarOS: (id: string) => `/planos-manutencao/${id}/gerar-os`,
+    processarVencidos: "/planos-manutencao/processar-vencidos",
+  },
   ordensServico: {
     list: "/ordens-servico",
     create: "/ordens-servico",

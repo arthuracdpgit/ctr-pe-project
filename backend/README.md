@@ -107,6 +107,21 @@ npm run test:watch
 
 > Os testes e2e requerem banco ativo com seed aplicado.
 
+### Testes da Feat 7 (relatórios)
+
+```bash
+# Unitários: jobs, rotas, PDF, storage e limpeza (sem banco)
+npm run test:unit -- report
+
+# E2E do fluxo completo com duas empresas (banco com base sintética)
+npm run test:integration -- report-flow
+
+# PDF de exemplo para conferência visual
+npm run reports:sample-pdf
+```
+
+O roteiro de teste manual está em `docs/feat7-relatorios-teste-manual.md`.
+
 ---
 
 ## Rotas da API
@@ -255,6 +270,38 @@ Authorization: Bearer <token>
 | GET | `/api/auditoria` | ADMIN, GESTOR | Lista registros de auditoria |
 | GET | `/api/auditoria/:id` | ADMIN, GESTOR | Busca registro por ID |
 
+### Relatórios de IA (Feat 7 — Task 06)
+
+Todas as rotas exigem autenticação e usuário vinculado a uma empresa. Cada
+usuário só vê e baixa os próprios relatórios, dentro da própria empresa.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/ai/reports` | Solicita um relatório. Responde **202** com o job `queued` e o cabeçalho `Location` |
+| GET | `/api/ai/reports` | Lista os relatórios do usuário (`status`, `page`, `pageSize`) |
+| GET | `/api/ai/reports/:id` | Consulta o status: `queued`, `running`, `done` ou `failed` |
+| GET | `/api/ai/reports/:id/download` | Baixa o PDF. **409** se ainda não concluído; **404** se expirado ou de outra empresa |
+
+Corpo do `POST` (informe `reportType`, `request` ou ambos):
+
+```json
+{
+  "reportType": "monthly_maintenance",
+  "period": { "start": "2026-10-01", "end": "2026-10-31" },
+  "request": "Destaque as ordens de serviço atrasadas."
+}
+```
+
+- `reportType`: `monthly_maintenance`, `asset_costs` ou `availability`.
+- `period`: opcional, datas `AAAA-MM-DD`, no máximo 366 dias.
+- Cabeçalho opcional `Idempotency-Key` (8 a 128 caracteres): repetir o pedido
+  com a mesma chave devolve o mesmo job, com `Idempotent-Replayed: true`.
+- Limite: 5 solicitações a cada 10 minutos por usuário e empresa.
+- `downloadUrl` só aparece quando o status é `done` e o arquivo está dentro
+  da retenção de 30 dias; depois disso o job fica com `expired: true`.
+- A criação é auditada (`relatorio_ia`) somente com `id` e `status`; o texto
+  do pedido não vai para a auditoria. Downloads são registrados em log.
+
 ### Health check
 
 | Método | Rota | Descrição |
@@ -262,6 +309,63 @@ Authorization: Bearer <token>
 | GET | `/health` | Status da API |
 
 ---
+
+## Jobs de relatório (Feat 7 — Task 05)
+
+A geração de relatórios roda fora da requisição HTTP. O estado de cada pedido
+fica na tabela `JobRelatorioIA`, que é a fonte de verdade; o gatilho que
+dispara a execução é o **Trigger.dev** (SDK v4), com um modo manual para
+desenvolvimento.
+
+Estados: `QUEUED` → `RUNNING` → `DONE` | `FAILED`, com `RUNNING` → `QUEUED`
+em erros transitórios.
+
+- **Idempotência:** a chave `(empresaId, usuarioId, chaveIdempotencia)` é
+  única. Repetir o pedido devolve o mesmo job; reutilizar a chave com outra
+  solicitação retorna 409.
+- **Claim atômico:** só um worker assume cada job (update condicional no
+  Postgres). Entregas duplicadas do gatilho são ignoradas.
+- **Lease com fencing:** cada execução recebe um `leaseToken` e um `leaseAte`.
+  Toda conclusão exige o token vigente; se o lease foi perdido, o PDF gerado
+  é descartado.
+- **Retry:** erros 5xx, 429 e inesperados são reprocessados com backoff
+  exponencial (30 s, 60 s, 120 s… até 10 min), até `REPORT_JOB_MAX_ATTEMPTS`.
+  Erros 4xx falham imediatamente. Mensagens de erros inesperados não são
+  persistidas.
+- **Recuperação:** jobs `RUNNING` com lease vencido voltam para `QUEUED` ou,
+  sem tentativas restantes, viram `FAILED` com `LEASE_EXPIRED`.
+
+### Gatilho: Trigger.dev
+
+- Task `generate-report` (`src/trigger/report-jobs.ts`): recebe só o `jobId` e
+  chama `ReportJobProcessor.runJob`. Máximo de 15 min por execução, fila com
+  concorrência 2 e lease de 16 min.
+- Task agendada `report-jobs-sweep` (a cada 5 min): recupera leases vencidos e
+  redispara jobs prontos cujo disparo se perdeu.
+- O backend dispara pelo `TriggerDevReportJobDispatcher`, com chave de
+  idempotência por job e tentativa. O payload não leva empresa, usuário nem o
+  texto do pedido.
+
+Variáveis:
+
+| Onde | Variável | Valor |
+|---|---|---|
+| Backend (Vercel) | `REPORT_JOB_DISPATCHER` | `trigger` |
+| Backend (Vercel) | `TRIGGER_SECRET_KEY` | chave do ambiente, com acesso apenas de Trigger |
+| Trigger.dev (painel) | `REPORT_JOB_DISPATCHER` | `trigger` |
+| Trigger.dev (painel) | `DATABASE_URL`, `AI_READONLY_DATABASE_URL`, `GROQ_API_KEY`, `GROQ_MODEL`, `BLOB_READ_WRITE_TOKEN` | mesmos valores do backend |
+
+Comandos:
+
+```bash
+npm run trigger:dev      # executa as tasks localmente, ligadas ao ambiente dev
+npm run trigger:deploy   # publica as tasks no Trigger.dev
+npm run reports:jobs:run # modo manual (REPORT_JOB_DISPATCHER=manual)
+```
+
+> As tasks rodam na infraestrutura do Trigger.dev e leem o banco da empresa.
+> Antes de cadastrar credenciais de produção no painel, valide com a
+> governança corporativa.
 
 ## Perfis e permissões
 

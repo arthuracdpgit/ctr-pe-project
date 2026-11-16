@@ -39,7 +39,7 @@ interface UpdateAtivoInput {
 }
 
 interface FindAllFilters {
-  empresaId?: string;
+  empresaId: string; // Obrigatório
   localizacaoId?: string;
   status?: StatusAtivo;
   tipo?: TipoAtivo;
@@ -55,10 +55,47 @@ export class AtivosService {
     return this.ativosRepository.findAll(filters);
   }
 
-  async findById(id: string) {
-    const ativo = await this.ativosRepository.findById(id);
+  static extractCodigoFromQrPayload(rawPayload: string): string {
+    const trimmed = rawPayload.trim();
+    if (!trimmed || trimmed.length > 300) {
+      throw new AppError({
+        message: "Payload do QR Code inválido",
+        statusCode: 400,
+        errorCode: ErrorCode.VALIDATION_ERROR,
+      });
+    }
+    const prefixMatch = trimmed.match(/^CTRPE:ATIVO:(.+)$/i);
+    if (prefixMatch?.[1]) return prefixMatch[1].trim();
+    const pathMatch = trimmed.match(/\/ativos\/qr\/([^/?#]+)/i);
+    if (pathMatch?.[1]) return pathMatch[1].trim();
+    return trimmed;
+  }
 
-    if (!ativo) throw new AppError({ message: "Ativo não encontrado", statusCode: 404, errorCode: ErrorCode.NOT_FOUND });
+  async findByCodigo(rawCodigo: string, empresaId: string) {
+    const codigo = AtivosService.extractCodigoFromQrPayload(rawCodigo);
+    const ativo = await this.ativosRepository.findByCodigo(empresaId, codigo);
+
+    if (!ativo) {
+      throw new AppError({
+        message: "Ativo não encontrado para o código informado",
+        statusCode: 404,
+        errorCode: ErrorCode.NOT_FOUND,
+      });
+    }
+
+    return ativo;
+  }
+
+  async findById(id: string, empresaId: string) {
+    const ativo = await this.ativosRepository.findById(id, empresaId);
+
+    if (!ativo) {
+      throw new AppError({
+        message: "Ativo não encontrado",
+        statusCode: 404,
+        errorCode: ErrorCode.NOT_FOUND,
+      });
+    }
 
     return ativo;
   }
@@ -66,26 +103,38 @@ export class AtivosService {
   async create(data: CreateAtivoInput) {
     const codigoEmUso = await this.ativosRepository.findByCodigo(data.empresaId, data.codigo);
 
-    if (codigoEmUso) throw new AppError({ message: "Código já está em uso nesta empresa", statusCode: 409, errorCode: ErrorCode.CONFLICT });
+    if (codigoEmUso) {
+      throw new AppError({
+        message: "Código já está em uso nesta empresa",
+        statusCode: 409,
+        errorCode: ErrorCode.CONFLICT,
+      });
+    }
 
     return this.ativosRepository.create(data);
   }
 
-  async update(id: string, data: UpdateAtivoInput) {
-    const ativo = await this.findById(id);
+  async update(id: string, empresaId: string, data: UpdateAtivoInput) {
+    const ativo = await this.findById(id, empresaId);
 
     if (data.codigo && data.codigo !== ativo.codigo) {
-      const codigoEmUso = await this.ativosRepository.findByCodigo(ativo.empresaId, data.codigo);
-      if (codigoEmUso) throw new AppError({ message: "Código já está em uso nesta empresa", statusCode: 409, errorCode: ErrorCode.CONFLICT });
+      const codigoEmUso = await this.ativosRepository.findByCodigo(empresaId, data.codigo);
+      if (codigoEmUso) {
+        throw new AppError({
+          message: "Código já está em uso nesta empresa",
+          statusCode: 409,
+          errorCode: ErrorCode.CONFLICT,
+        });
+      }
     }
 
-    return this.ativosRepository.update(id, data);
+    return this.ativosRepository.update(id, empresaId, data);
   }
 
-  async updateStatus(id: string, status: StatusAtivo) {
-    const ativo = await this.findById(id);
+  async updateStatus(id: string, empresaId: string, status: StatusAtivo) {
+    const ativo = await this.findById(id, empresaId);
 
-    const atualizado = await this.ativosRepository.updateStatus(id, status);
+    const atualizado = await this.ativosRepository.updateStatus(id, empresaId, status);
 
     if (status === "PARADO") {
       await this.alertasRepository.createAtivoParado({
@@ -97,8 +146,8 @@ export class AtivosService {
     return atualizado;
   }
 
-  async delete(id: string) {
-    await this.findById(id);
-    return this.ativosRepository.delete(id);
+  async delete(id: string, empresaId: string) {
+    await this.findById(id, empresaId);
+    return this.ativosRepository.delete(id, empresaId);
   }
 }

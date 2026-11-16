@@ -20,6 +20,8 @@ import { apontamentosOSRouter } from "./modules/apontamentos-os/apontamentos-os.
 import { dashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes.js";
 import { localizacoesRouter } from "./modules/localizacoes/localizacoes.routes.js";
+import { aiRouter } from "./modules/ai/ai.routes.js";
+import { planosManutencaoRouter } from "./modules/planos-manutencao/planos-manutencao.routes.js";
 
 const require = createRequire(import.meta.url);
 const helmet: typeof import("helmet").default = require("helmet");
@@ -75,6 +77,8 @@ app.use("/api/apontamentos-os", apontamentosOSRouter);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/auditoria", auditoriaRouter);
 app.use("/api/localizacoes", localizacoesRouter);
+app.use("/api/ai", aiRouter);
+app.use("/api/planos-manutencao", planosManutencaoRouter);
 
 app.get("/health", (_req, res) => {
   return res.status(200).json({

@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { PermissionGate } from "@/components/domain/permission-gate";
+import { MaterialPrevisaoRupturaCard } from "@/features/materiais/material-previsao-ruptura-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -9,6 +11,17 @@ import {
   useMaterial,
   useUpdateMaterialEstoque,
 } from "@/features/materiais/materiais.hooks";
+import { notify } from "@/store/toast-store";
+
+function estoqueErrorMessage(error: unknown): string {
+  const message = (
+    error as { response?: { data?: { error?: unknown } } }
+  )?.response?.data?.error;
+
+  return typeof message === "string" && message.trim()
+    ? message
+    : "Não foi possível atualizar o estoque.";
+}
 
 export default function MaterialDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,33 +32,42 @@ export default function MaterialDetailScreen() {
   const [novoEstoque, setNovoEstoque] = useState("");
 
   async function handleEntrada() {
-    await updateEstoque.mutateAsync({
-      operacao: "ENTRADA",
-      quantidade: Number(quantidade),
-      motivo: "Entrada manual pelo app",
-    });
-
-    setQuantidade("");
+    try {
+      await updateEstoque.mutateAsync({
+        operacao: "ENTRADA",
+        quantidade: Number(quantidade),
+        motivo: "Entrada manual pelo app",
+      });
+      setQuantidade("");
+    } catch (error) {
+      notify.error("Erro ao atualizar estoque", estoqueErrorMessage(error));
+    }
   }
 
   async function handleSaida() {
-    await updateEstoque.mutateAsync({
-      operacao: "SAIDA",
-      quantidade: Number(quantidade),
-      motivo: "Saída manual pelo app",
-    });
-
-    setQuantidade("");
+    try {
+      await updateEstoque.mutateAsync({
+        operacao: "SAIDA",
+        quantidade: Number(quantidade),
+        motivo: "Saída manual pelo app",
+      });
+      setQuantidade("");
+    } catch (error) {
+      notify.error("Erro ao atualizar estoque", estoqueErrorMessage(error));
+    }
   }
 
   async function handleAjuste() {
-    await updateEstoque.mutateAsync({
-      operacao: "AJUSTE",
-      novoEstoque: Number(novoEstoque),
-      motivo: "Ajuste manual pelo app",
-    });
-
-    setNovoEstoque("");
+    try {
+      await updateEstoque.mutateAsync({
+        operacao: "AJUSTE",
+        novoEstoque: Number(novoEstoque),
+        motivo: "Ajuste manual pelo app",
+      });
+      setNovoEstoque("");
+    } catch (error) {
+      notify.error("Erro ao atualizar estoque", estoqueErrorMessage(error));
+    }
   }
 
   if (isLoading) {
@@ -81,9 +103,11 @@ export default function MaterialDetailScreen() {
           </Text>
         </View>
 
-        <Button onPress={() => router.push(`/materiais/${material.id}-editar`)}>
-          <Text>Editar</Text>
-        </Button>
+        <PermissionGate permission="materialsManage">
+          <Button onPress={() => router.push(`/materiais/${material.id}-editar`)}>
+            <Text>Editar</Text>
+          </Button>
+        </PermissionGate>
       </View>
 
       <View className="gap-3 rounded-xl border border-border bg-card p-4">
@@ -95,8 +119,11 @@ export default function MaterialDetailScreen() {
         <Text>Descrição: {material.descricao ?? "-"}</Text>
       </View>
 
-      <View className="mt-6 gap-4 rounded-xl border border-border bg-card p-4">
-        <Text className="text-lg font-semibold">Controle de estoque</Text>
+      <MaterialPrevisaoRupturaCard materialId={material.id} />
+
+      <PermissionGate permission="materialsManage">
+        <View className="mt-6 gap-4 rounded-xl border border-border bg-card p-4">
+          <Text className="text-lg font-semibold">Controle de estoque</Text>
 
         <View className="gap-2">
           <Text>Quantidade</Text>
@@ -142,7 +169,8 @@ export default function MaterialDetailScreen() {
         >
           <Text>Ajustar estoque</Text>
         </Button>
-      </View>
+        </View>
+      </PermissionGate>
     </View>
   );
 }

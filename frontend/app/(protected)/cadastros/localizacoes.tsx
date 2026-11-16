@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { View, Text, FlatList, Pressable, TextInput, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { PermissionGate } from "@/components/domain/permission-gate";
 import { useLocalizacoes, useDeleteLocalizacao } from "@/features/localizacoes/localizacoes.hooks";
 import { useEmpresas } from "@/features/empresas/empresas.hooks";
 import { useEmpresaStore } from "@/store/empresa-store";
+import { EmptyState } from "@/components/feedback/empty-state";
 
 export default function LocalizacoesScreen() {
   const router = useRouter();
@@ -35,14 +37,16 @@ export default function LocalizacoesScreen() {
     <View className="flex-1 bg-background p-4">
       <View className="flex-row items-center justify-between mb-4">
         <Text className="text-foreground text-xl font-bold">Localizacoes</Text>
-        <Pressable
-          onPress={() => router.push("/(protected)/cadastros/localizacao-nova")}
-          className="bg-primary px-4 py-2 rounded-md"
-        >
-          <Text className="text-primary-foreground text-sm font-medium">
-            Nova localizacao
-          </Text>
-        </Pressable>
+        <PermissionGate permission="locationsManage">
+          <Pressable
+            onPress={() => router.push("/(protected)/cadastros/localizacao-nova")}
+            className="bg-primary px-4 py-2 rounded-md"
+          >
+            <Text className="text-primary-foreground text-sm font-medium">
+              Nova localizacao
+            </Text>
+          </Pressable>
+        </PermissionGate>
       </View>
 
       <Text className="text-muted-foreground text-sm mb-3">
@@ -111,25 +115,25 @@ export default function LocalizacoesScreen() {
             </View>
             {item.codigo && <Text className="text-muted-foreground text-sm">{item.codigo}</Text>}
             {item.tipo && <Text className="text-muted-foreground text-xs mb-2">{item.tipo}</Text>}
-            <View className="flex-row gap-3 mt-2">
-              <Pressable
-                onPress={() =>
-                  router.push(`/(protected)/cadastros/localizacao-editar?id=${item.id}`)
-                }
-              >
-                <Text className="text-primary text-sm">Editar</Text>
-              </Pressable>
-              <Pressable onPress={() => handleInativar(item.id)}>
-                <Text className="text-destructive text-sm">Inativar</Text>
-              </Pressable>
-            </View>
+            <PermissionGate permission="locationsManage">
+              <View className="flex-row gap-3 mt-2">
+                <Pressable
+                  onPress={() =>
+                    router.push(`/(protected)/cadastros/localizacao-editar?id=${item.id}`)
+                  }
+                >
+                  <Text className="text-primary text-sm">Editar</Text>
+                </Pressable>
+                <Pressable onPress={() => handleInativar(item.id)}>
+                  <Text className="text-destructive text-sm">Inativar</Text>
+                </Pressable>
+              </View>
+            </PermissionGate>
           </View>
         )}
         ListEmptyComponent={
           !isLoading ? (
-            <Text className="text-muted-foreground text-center mt-8">
-              Nenhuma localizacao encontrada.
-            </Text>
+            <EmptyState title="Nenhuma localização encontrada" description="Cadastre uma localização para começar." />
           ) : null
         }
       />

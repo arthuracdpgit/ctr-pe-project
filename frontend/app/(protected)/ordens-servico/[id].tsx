@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 
+import { PermissionGate } from "@/components/domain/permission-gate";
 import { OrdemServicoActions } from "@/components/domain/ordem-servico-actions";
 import { PrioridadeBadge } from "@/components/domain/prioridade-badge";
 import { StatusBadge } from "@/components/domain/status-badge";
@@ -10,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { TIPO_OS_LABEL } from "@/constants/status";
 import { useOrdemServico } from "@/features/ordens-servico/ordens-servico.hooks";
+import { OSDiagnosticoIACard } from "@/features/ordens-servico/os-diagnostico-ia-card";
 import { OSMateriaisLista } from "@/features/ordens-servico/os-materiais-lista";
 import { ModalAdicionarMaterial } from "@/features/ordens-servico/modal-adicionar-material";
 import { formatDateTime } from "@/lib/dates";
@@ -77,6 +79,8 @@ export default function OrdemServicoDetalheScreen() {
         </CardContent>
       </Card>
 
+      <OSDiagnosticoIACard ordemServicoId={os.id} />
+
       <Card>
         <CardHeader>
           <CardTitle>Informações</CardTitle>
@@ -85,7 +89,6 @@ export default function OrdemServicoDetalheScreen() {
           <Linha
             label="Ativo"
             value={os.ativo ? `${os.ativo.codigo} · ${os.ativo.nome}` : null}
-            
           />
           <Linha label="Responsável" value={os.responsavel?.nome} />
           <Linha label="Aberta em" value={formatDateTime(os.abertaEm)} />
@@ -123,8 +126,7 @@ export default function OrdemServicoDetalheScreen() {
         </CardContent>
       </Card>
 
-
-            <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Apontamentos</CardTitle>
         </CardHeader>
@@ -132,22 +134,24 @@ export default function OrdemServicoDetalheScreen() {
           <OSApontamentosLista ordemServicoId={os.id} />
         </CardContent>
       </Card>
-      
+
       <OrdemServicoActions ordemServico={os} />
 
-      <Button
-        variant="outline"
-        onPress={() =>
-          router.push({
-            pathname: "/ordens-servico/[id]-editar",
-            params: { id: os.id },
-          })
-        }
-      >
-        <Text>Editar</Text>
-      </Button>
+      <PermissionGate permission="workOrdersManage">
+        <Button
+          variant="outline"
+          onPress={() =>
+            router.push({
+              pathname: "/ordens-servico/[id]-editar",
+              params: { id: os.id },
+            })
+          }
+        >
+          <Text>Editar</Text>
+        </Button>
+      </PermissionGate>
 
-            <ModalAdicionarMaterial
+      <ModalAdicionarMaterial
         ordemServicoId={addMaterialOSId}
         empresaId={os.empresaId}
         onClose={() => setAddMaterialOSId(null)}

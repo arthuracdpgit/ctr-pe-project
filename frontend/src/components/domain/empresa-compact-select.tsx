@@ -12,12 +12,18 @@ import {
     SelectValue,
     type Option,
 } from "@/components/ui/select";
+import { Text } from "@/components/ui/text";
 import { useEmpresas } from "@/features/empresas/empresas.hooks";
 import { useEmpresaStore } from "@/store/empresa-store";
 
 const ALL_VALUE = "__ALL__";
 
-export function EmpresaCompactSelect() {
+type EmpresaCompactSelectProps = {
+    variant?: "default" | "sidebar";
+};
+
+export function EmpresaCompactSelect({ variant = "default" }: EmpresaCompactSelectProps) {
+    const naSidebar = variant === "sidebar";
     const insets = useSafeAreaInsets();
     const { empresaId, setEmpresaId } = useEmpresaStore();
     const { data: empresas, isLoading } = useEmpresas({ ativa: true });
@@ -63,8 +69,23 @@ export function EmpresaCompactSelect() {
                 setEmpresaId(option?.value === ALL_VALUE ? null : option?.value ?? null)
             }
         >
-            <SelectTrigger className="h-9 w-full max-w-[220px]">
-                <SelectValue className="flex-1" placeholder="Empresa" />
+            <SelectTrigger
+                className={
+                    naSidebar
+                        ? "h-11 w-full max-w-full rounded-xl border-white/10 bg-white/5 dark:bg-white/5"
+                        : "h-9 w-full max-w-[220px]"
+                }
+            >
+                {naSidebar ? (
+                    <Text
+                        className="flex-1 text-sm text-zinc-100"
+                        numberOfLines={1}
+                    >
+                        {selectedOption?.label ?? "Empresa"}
+                    </Text>
+                ) : (
+                    <SelectValue className="flex-1" placeholder="Empresa" />
+                )}
             </SelectTrigger>
             <SelectContent insets={contentInsets}>
                 <SelectGroup>

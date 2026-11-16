@@ -49,9 +49,28 @@
         });
     }
 
+    async findByIdForEmpresa(id: string, empresaId: string) {
+        return prisma.ordemServicoMaterial.findFirst({
+        where: { id, ordemServico: { empresaId } },
+        select: osMaterialSelect,
+        });
+    }
+
     async findMaterialById(materialId: string) {
         return prisma.material.findUnique({
         where: { id: materialId },
+        select: {
+            id: true,
+            estoqueAtual: true,
+            custoMedio: true,
+            ativo: true,
+        },
+        });
+    }
+
+    async findMaterialByIdForEmpresa(materialId: string, empresaId: string) {
+        return prisma.material.findFirst({
+        where: { id: materialId, empresaId },
         select: {
             id: true,
             estoqueAtual: true,
@@ -165,11 +184,18 @@
         new Prisma.Decimal(0)
         );
 
+        const ordemServico = await tx.ordemServico.findUniqueOrThrow({
+        where: { id: ordemServicoId },
+        select: { custoMaoObra: true },
+        });
+
+        const custoTotal = custoMateriais.plus(ordemServico.custoMaoObra);
+
         await tx.ordemServico.update({
         where: { id: ordemServicoId },
         data: {
             custoMateriais,
-            custoTotal: custoMateriais,
+            custoTotal,
         },
         });
     }

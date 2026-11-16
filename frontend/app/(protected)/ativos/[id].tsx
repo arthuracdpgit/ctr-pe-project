@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, View, Alert } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
 
+import { PermissionGate } from "@/components/domain/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { AtivoPlanosPreventivosCard } from "@/features/ativos/ativo-planos-preventivos-card";
 import {
   useAtivo,
   useDeleteAtivo,
@@ -78,23 +80,28 @@ export default function AtivoDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-background px-4 py-6">
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24 }}
+    >
       <View className="mb-6 flex-row items-center justify-between gap-4">
         <View className="flex-1">
           <Text className="text-2xl font-bold">{ativo.nome}</Text>
           <Text className="text-sm text-muted-foreground">Código: {ativo.codigo}</Text>
         </View>
 
-        <Button
-          onPress={() =>
-            router.push({
-              pathname: "/ativos/editar",
-              params: { id: ativo.id },
-            })
-          }
-        >
-          <Text>Editar</Text>
-        </Button>
+        <PermissionGate permission="assetsManage">
+          <Button
+            onPress={() =>
+              router.push({
+                pathname: "/ativos/editar",
+                params: { id: ativo.id },
+              })
+            }
+          >
+            <Text>Editar</Text>
+          </Button>
+        </PermissionGate>
       </View>
 
       <View className="gap-3 rounded-xl border border-border bg-card p-4">
@@ -108,31 +115,37 @@ export default function AtivoDetailScreen() {
         <Text>Descrição: {ativo.descricao ?? "-"}</Text>
       </View>
 
-      <View className="mt-6 gap-3 rounded-xl border border-border bg-card p-4">
-        <Text className="text-lg font-semibold">Alterar status</Text>
+      <AtivoPlanosPreventivosCard ativoId={ativo.id} />
 
-        <View className="flex-row flex-wrap gap-2">
-          {STATUS_OPTIONS.map((status) => (
-            <Button
-              key={status}
-              variant={ativo.status === status ? "default" : "outline"}
-              disabled={updateStatus.isPending || ativo.status === status}
-              onPress={() => handleChangeStatus(status)}
-            >
-              <Text>{status}</Text>
-            </Button>
-          ))}
+      <PermissionGate permission="assetsManage">
+        <View className="mt-6 gap-3 rounded-xl border border-border bg-card p-4">
+          <Text className="text-lg font-semibold">Alterar status</Text>
+
+          <View className="flex-row flex-wrap gap-2">
+            {STATUS_OPTIONS.map((status) => (
+              <Button
+                key={status}
+                variant={ativo.status === status ? "default" : "outline"}
+                disabled={updateStatus.isPending || ativo.status === status}
+                onPress={() => handleChangeStatus(status)}
+              >
+                <Text>{status}</Text>
+              </Button>
+            ))}
+          </View>
         </View>
-      </View>
+      </PermissionGate>
 
-      <Button
-        variant="destructive"
-        className="mt-6"
-        disabled={deleteAtivo.isPending}
-        onPress={handleDelete}
-      >
-        <Text>{deleteAtivo.isPending ? "Excluindo..." : "Excluir ativo"}</Text>
-      </Button>
-    </View>
+      <PermissionGate permission="assetsDelete">
+        <Button
+          variant="destructive"
+          className="mt-6"
+          disabled={deleteAtivo.isPending}
+          onPress={handleDelete}
+        >
+          <Text>{deleteAtivo.isPending ? "Excluindo..." : "Excluir ativo"}</Text>
+        </Button>
+      </PermissionGate>
+    </ScrollView>
   );
 }

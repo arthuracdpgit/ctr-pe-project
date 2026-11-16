@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { OrdensServicoMateriaisService } from "./ordens-servico-materiais.service.js";
+import { getCurrentCompanyUser } from "../../common/utils/get-current-user.js";
 
 const service = new OrdensServicoMateriaisService();
 
@@ -25,8 +26,13 @@ export async function findById(req: Request, res: Response, next: NextFunction) 
 
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
+    const currentUser = getCurrentCompanyUser(req);
     const { ordemServicoId } = req.params as { ordemServicoId: string };
-    const result = await service.create(ordemServicoId, req.body);
+    const result = await service.create(
+      ordemServicoId,
+      currentUser.empresaId,
+      req.body,
+    );
     return res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -45,9 +51,10 @@ export async function update(req: Request, res: Response, next: NextFunction) {
 
 export async function consumir(req: Request, res: Response, next: NextFunction) {
   try {
+    const currentUser = getCurrentCompanyUser(req);
     const { id } = req.params as { id: string };
     const { quantidade } = req.body as { quantidade?: number };
-    const result = await service.consumir(id, quantidade);
+    const result = await service.consumir(id, currentUser.empresaId, quantidade);
     return res.status(200).json(result);
   } catch (error) {
     next(error);

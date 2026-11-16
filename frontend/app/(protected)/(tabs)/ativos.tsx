@@ -2,10 +2,13 @@ import { router } from "expo-router";
 import { ActivityIndicator, FlatList, View } from "react-native";
 
 import { AtivoCard } from "@/components/domain/ativo-card";
+import { PermissionGate } from "@/components/domain/permission-gate";
+import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAtivos } from "@/features/ativos/ativos.hooks";
+import { SearchX } from "lucide-react-native";
 import { useState } from "react";
 
 export default function AtivosScreen() {
@@ -47,9 +50,16 @@ export default function AtivosScreen() {
           </Text>
         </View>
 
-        <Button onPress={() => router.push("/ativos/novo")}>
-          <Text>Novo</Text>
-        </Button>
+        <View className="flex-row items-center gap-2">
+          <Button variant="outline" onPress={() => router.push("/ativos/qr-scan")}>
+            <Text>Ler QR</Text>
+          </Button>
+          <PermissionGate permission="assetsManage">
+            <Button onPress={() => router.push("/ativos/novo")}>
+              <Text>Novo</Text>
+            </Button>
+          </PermissionGate>
+        </View>
       </View>
 
       <View className="mb-4">
@@ -68,12 +78,20 @@ export default function AtivosScreen() {
           <AtivoCard ativo={item} onPress={() => router.push(`/ativos/${item.id}`)} />
         )}
         ListEmptyComponent={
-          <View className="items-center justify-center rounded-xl border border-dashed border-border p-8">
-            <Text className="text-lg font-semibold">Nenhum ativo encontrado</Text>
-            <Text className="mt-2 text-center text-muted-foreground">
-              Cadastre o primeiro ativo para começar.
-            </Text>
-          </View>
+          search ? (
+            <EmptyState
+              icon={SearchX}
+              title="Nenhum ativo encontrado"
+              description={`Nada corresponde a "${search}".`}
+              actionLabel="Limpar busca"
+              onAction={() => setSearch("")}
+            />
+          ) : (
+            <EmptyState
+              title="Nenhum ativo cadastrado"
+              description="Cadastre o primeiro ativo para começar."
+            />
+          )
         }
       />
     </View>
